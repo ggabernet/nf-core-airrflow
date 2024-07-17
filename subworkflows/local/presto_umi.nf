@@ -12,8 +12,11 @@ include { PRESTO_MASKPRIMERS    as  PRESTO_MASKPRIMERS_UMI   }    from '../../mo
 include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_PRIMERS   }    from '../../modules/local/presto/presto_maskprimers_align'
 include { PRESTO_MASKPRIMERS_EXTRACT                         }    from '../../modules/local/presto/presto_maskprimers_extract'
 include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_CREGION   }    from '../../modules/local/presto/presto_maskprimers_align'
+include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_R1        }    from '../../modules/local/presto/presto_maskprimers_align'
+include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_R2        }    from '../../modules/local/presto/presto_maskprimers_align'
 include { PRESTO_PAIRSEQ        as  PRESTO_PAIRSEQ_UMI       }    from '../../modules/local/presto/presto_pairseq'
 include { PRESTO_PAIRSEQ        as  PRESTO_PAIRSEQ_ALIGN     }    from '../../modules/local/presto/presto_pairseq'
+include { PRESTO_PAIRSEQ  as PRESTO_PAIRSEQ_ALIGN_DUALINDEX  }    from '../../modules/local/presto/presto_pairseq'
 include { PRESTO_CLUSTERSETS    as  PRESTO_CLUSTERSETS_UMI   }    from '../../modules/local/presto/presto_clustersets'
 include { PRESTO_PARSE_CLUSTER  as  PRESTO_PARSE_CLUSTER_UMI }    from '../../modules/local/presto/presto_parse_cluster'
 include { PRESTO_BUILDCONSENSUS as  PRESTO_BUILDCONSENSUS_UMI}    from '../../modules/local/presto/presto_buildconsensus'
@@ -133,6 +136,55 @@ workflow PRESTO_UMI {
         PRESTO_PAIRSEQ_ALIGN( ch_maskprimers_reads )
         ch_versions  = ch_versions.mix(PRESTO_PAIRSEQ_ALIGN.out.versions)
         ch_for_clustersets = PRESTO_PAIRSEQ_ALIGN.out.reads
+        ch_pairseq_logs = PRESTO_PAIRSEQ_ALIGN.out.logs
+
+    } else if (params.maskprimers_align_dualindex) {
+
+        ch_reads_R1 = PRESTO_FILTERSEQ_UMI.out.reads
+                                            .map{ reads -> [reads[0], reads[1]] }.dump(tag: 'ch_reads_R1')
+        ch_reads_R2 = PRESTO_FILTERSEQ_UMI.out.reads
+                                            .map{ reads -> [reads[0], reads[2]] }.dump(tag: 'ch_reads_R2')
+
+        if (cprimer_position == "R1") {
+            ch_primers_R1 = ch_cprimers
+            ch_primers_R2 = ch_vprimers
+        } else if (cprimer_position == "R2") {
+            ch_primers_R1 = ch_vprimers
+            ch_primers_R2 = ch_cprimers
+        } else {
+            error "Error in determining cprimer position. Please choose R1 or R2."
+        }
+
+        PRESTO_ALIGN_R1(
+            ch_reads_R1,
+            ch_primers_R1.collect(),
+            params.primer_maxlen,
+            params.primer_r1_maxerror,
+            params.primer_mask_mode
+        )
+        ch_versions = ch_versions.mix(PRESTO_ALIGN_R1.out.versions)
+
+        PRESTO_ALIGN_R2(
+            ch_reads_R2,
+            ch_primers_R2.collect(),
+            params.primer_maxlen,
+            params.primer_r2_maxerror,
+            params.primer_mask_mode
+        )
+        ch_versions = ch_versions.mix(PRESTO_ALIGN_R2.out.versions)
+
+        // Merge again R1 and R2 by sample ID.
+        ch_maskprimers_reads_R1 = PRESTO_ALIGN_R1.out.reads.map{ reads -> [reads[0].id, reads[0], reads[1]]}.dump(tag: 'ch_maskprimers_reads_R1')
+        ch_maskprimers_reads_R2 = PRESTO_ALIGN_R2.out.reads.map{ reads -> [reads[0].id, reads[0], reads[1]]}.dump(tag: 'ch_maskprimers_reads_R2')
+        ch_maskprimers_reads = ch_maskprimers_reads_R1.join(ch_maskprimers_reads_R2)
+                                                        .map{ it -> [it[1], it[2], it[4]] }.dump(tag: 'ch_maskprimers_reads_after_remerge')
+
+        ch_maskprimers_logs = PRESTO_ALIGN_R1.out.logs
+        ch_maskprimers_logs = ch_maskprimers_logs.mix(PRESTO_ALIGN_R2.out.logs)
+
+        PRESTO_PAIRSEQ_ALIGN_DUALINDEX( ch_maskprimers_reads )
+        ch_versions  = ch_versions.mix(PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.versions)
+        ch_for_clustersets = PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.reads
         ch_pairseq_logs = PRESTO_PAIRSEQ_ALIGN.out.logs
 
     } else {
