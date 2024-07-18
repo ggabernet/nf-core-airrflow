@@ -185,7 +185,7 @@ workflow PRESTO_UMI {
         PRESTO_PAIRSEQ_ALIGN_DUALINDEX( ch_maskprimers_reads )
         ch_versions  = ch_versions.mix(PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.versions)
         ch_for_clustersets = PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.reads
-        ch_pairseq_logs = PRESTO_PAIRSEQ_ALIGN.out.logs
+        ch_pairseq_logs = PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.logs
 
     } else {
 
