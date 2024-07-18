@@ -145,10 +145,10 @@ workflow PRESTO_UMI {
         ch_reads_R2 = PRESTO_FILTERSEQ_UMI.out.reads
                                             .map{ reads -> [reads[0], reads[2]] }.dump(tag: 'ch_reads_R2')
 
-        if (cprimer_position == "R1") {
+        if (params.cprimer_position == "R1") {
             ch_primers_R1 = ch_cprimers
             ch_primers_R2 = ch_vprimers
-        } else if (cprimer_position == "R2") {
+        } else if (params.cprimer_position == "R2") {
             ch_primers_R1 = ch_vprimers
             ch_primers_R2 = ch_cprimers
         } else {
