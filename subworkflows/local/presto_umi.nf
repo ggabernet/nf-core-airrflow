@@ -21,6 +21,7 @@ include { PRESTO_CLUSTERSETS    as  PRESTO_CLUSTERSETS_UMI   }    from '../../mo
 include { PRESTO_PARSE_CLUSTER  as  PRESTO_PARSE_CLUSTER_UMI }    from '../../modules/local/presto/presto_parse_cluster'
 include { PRESTO_BUILDCONSENSUS as  PRESTO_BUILDCONSENSUS_UMI}    from '../../modules/local/presto/presto_buildconsensus'
 include { PRESTO_BUILDCONSENSUS as PRESTO_BUILDCONSENSUS_ALIGN }  from '../../modules/local/presto/presto_buildconsensus'
+include { PRESTO_BUILDCONSENSUS as PRESTO_BUILDCONSENSUS_DUALINDEX } from '../../modules/local/presto/presto_buildconsensus'
 include { PRESTO_POSTCONSENSUS_PAIRSEQ as PRESTO_POSTCONSENSUS_PAIRSEQ_UMI }    from '../../modules/local/presto/presto_postconsensus_pairseq'
 include { PRESTO_ASSEMBLEPAIRS  as  PRESTO_ASSEMBLEPAIRS_UMI }    from '../../modules/local/presto/presto_assemblepairs'
 include { PRESTO_ASSEMBLEPAIRS_SEQUENTIAL                    }    from '../../modules/local/presto/presto_assemblepairs_sequential'
@@ -236,6 +237,13 @@ workflow PRESTO_UMI {
         ch_versions = ch_versions.mix(PRESTO_BUILDCONSENSUS_ALIGN.out.versions)
         ch_postconsensus = PRESTO_BUILDCONSENSUS_ALIGN.out.reads
         ch_buildconsensus_logs = PRESTO_BUILDCONSENSUS_ALIGN.out.logs
+    } else if (params.maskprimers_align_dualindex) {
+        PRESTO_BUILDCONSENSUS_DUALINDEX (
+            ch_for_buildconsensus
+        )
+        ch_versions = ch_versions.mix(PRESTO_BUILDCONSENSUS_DUALINDEX.out.versions)
+        ch_postconsensus = PRESTO_BUILDCONSENSUS_DUALINDEX.out.reads
+        ch_buildconsensus_logs = PRESTO_BUILDCONSENSUS_DUALINDEX.out.logs
     } else {
         PRESTO_BUILDCONSENSUS_UMI (
             ch_for_buildconsensus
