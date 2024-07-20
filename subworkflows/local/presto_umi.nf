@@ -142,9 +142,9 @@ workflow PRESTO_UMI {
     } else if (params.maskprimers_align_dualindex) {
 
         ch_reads_R1 = PRESTO_FILTERSEQ_UMI.out.reads
-                                            .map{ reads -> [reads[0], reads[1]] }.dump(tag: 'ch_reads_R1')
+                                            .map{ meta,R1,R2 -> [meta, R1] }.dump(tag: 'ch_reads_R1')
         ch_reads_R2 = PRESTO_FILTERSEQ_UMI.out.reads
-                                            .map{ reads -> [reads[0], reads[2]] }.dump(tag: 'ch_reads_R2')
+                                            .map{ meta,R1,R2 -> [meta, R2] }.dump(tag: 'ch_reads_R2')
 
         if (params.cprimer_position == "R1") {
             ch_primers_R1 = ch_cprimers

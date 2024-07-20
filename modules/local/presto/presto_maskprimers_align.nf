@@ -9,33 +9,34 @@ process PRESTO_MASKPRIMERS_ALIGN {
         'biocontainers/presto:0.7.1--pyhdfd78af_0' }"
 
     input:
-    tuple val(meta), path(R1)
+    tuple val(meta), path(reads)
     path(cprimers)
     val(max_len)
     val(max_error)
     val(mask_mode)
 
     output:
-    tuple val(meta), path("*_R1_primers-pass.fastq") , emit: reads
-    path "*_command_log_R1.txt", emit: logs
-    path "*_R1.log"
+    tuple val(meta), path("*_primers-pass.fastq") , emit: reads
+    path "*_command_log.txt", emit: logs
+    path "*.log"
     path "*.tab", emit: log_tab
     path "versions.yml" , emit: versions
 
     script:
     def args = task.ext.args?: ''
     def args2 = task.ext.args2?: ''
+    def suffix = task.ext.suffix?: ''
     """
     MaskPrimers.py align --nproc ${task.cpus} \\
-    -s $R1 \\
+    -s $reads \\
     -p ${cprimers} \\
     --maxlen ${max_len} \\
     --maxerror ${max_error} \\
     --mode ${mask_mode} \\
     $args \\
-    --outname ${meta.id}_R1 \\
-    --log ${meta.id}_R1.log > ${meta.id}_command_log_R1.txt
-    ParseLog.py -l ${meta.id}_R1.log $args2
+    --outname ${meta.id}_${suffix} \\
+    --log ${meta.id}_${suffix}.log > ${meta.id}_${suffix}_command_log.txt
+    ParseLog.py -l ${meta.id}_${suffix}.log $args2
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
