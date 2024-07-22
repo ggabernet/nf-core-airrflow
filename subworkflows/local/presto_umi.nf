@@ -14,6 +14,8 @@ include { PRESTO_MASKPRIMERS_EXTRACT                         }    from '../../mo
 include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_CREGION   }    from '../../modules/local/presto/presto_maskprimers_align'
 include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_R1        }    from '../../modules/local/presto/presto_maskprimers_align'
 include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_R2        }    from '../../modules/local/presto/presto_maskprimers_align'
+include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_PRECUT_R1 }    from '../../modules/local/presto/presto_maskprimers_align'
+include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_PRECUT_R2 }    from '../../modules/local/presto/presto_maskprimers_align'
 include { PRESTO_PAIRSEQ        as  PRESTO_PAIRSEQ_UMI       }    from '../../modules/local/presto/presto_pairseq'
 include { PRESTO_PAIRSEQ        as  PRESTO_PAIRSEQ_ALIGN     }    from '../../modules/local/presto/presto_pairseq'
 include { PRESTO_PAIRSEQ  as PRESTO_PAIRSEQ_ALIGN_DUALINDEX  }    from '../../modules/local/presto/presto_pairseq'
@@ -146,6 +148,41 @@ workflow PRESTO_UMI {
         ch_reads_R2 = PRESTO_FILTERSEQ_UMI.out.reads
                                             .map{ meta,R1,R2 -> [meta, R2] }.dump(tag: 'ch_reads_R2')
 
+                    // Sequence precut
+        if (params.sequence_precut_R1){
+            ch_seq_precut_R1 = Channel.fromPath(params.sequence_precut_R1, checkIfExists: true)
+
+            PRESTO_ALIGN_PRECUT_R1(
+                ch_reads_R1,
+                ch_seq_precut_R1.collect(),
+                params.primer_maxlen,
+                params.primer_r1_maxerror,
+                'cut'
+            )
+            ch_versions = ch_versions.mix(PRESTO_ALIGN_PRECUT_R1.out.versions)
+
+        } else {
+            ch_reads_R1_postprecut = ch_reads_R1
+            ch_reads_R2_postprecut = ch_reads_R2
+        }
+
+        if (params.sequence_precut_R2){
+            ch_seq_precut_R2 = Channel.fromPath(params.sequence_precut_R2, checkIfExists: true)
+
+            PRESTO_ALIGN_PRECUT_R2(
+                ch_reads_R2,
+                ch_seq_precut_R2.collect(),
+                params.primer_maxlen,
+                params.primer_r2_maxerror,
+                'cut'
+            )
+            ch_versions = ch_versions.mix(PRESTO_ALIGN_PRECUT_R2.out.versions)
+
+        } else {
+            ch_reads_R1_postprecut = ch_reads_R1
+            ch_reads_R2_postprecut = ch_reads_R2
+        }
+
         if (params.cprimer_position == "R1") {
             ch_primers_R1 = ch_cprimers
             ch_primers_R2 = ch_vprimers
@@ -157,7 +194,7 @@ workflow PRESTO_UMI {
         }
 
         PRESTO_ALIGN_R1(
-            ch_reads_R1,
+            ch_reads_R1_postprecut,
             ch_primers_R1.collect(),
             params.primer_maxlen,
             params.primer_r1_maxerror,
@@ -166,7 +203,7 @@ workflow PRESTO_UMI {
         ch_versions = ch_versions.mix(PRESTO_ALIGN_R1.out.versions)
 
         PRESTO_ALIGN_R2(
-            ch_reads_R2,
+            ch_reads_R2_postprecut,
             ch_primers_R2.collect(),
             params.primer_maxlen,
             params.primer_r2_maxerror,
@@ -183,7 +220,9 @@ workflow PRESTO_UMI {
         ch_maskprimers_logs = PRESTO_ALIGN_R1.out.logs
         ch_maskprimers_logs = ch_maskprimers_logs.mix(PRESTO_ALIGN_R2.out.logs)
 
-        PRESTO_PAIRSEQ_ALIGN_DUALINDEX( ch_maskprimers_reads )
+        PRESTO_PAIRSEQ_ALIGN_DUALINDEX(
+            ch_maskprimers_reads
+        )
         ch_versions  = ch_versions.mix(PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.versions)
         ch_for_clustersets = PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.reads
         ch_pairseq_logs = PRESTO_PAIRSEQ_ALIGN_DUALINDEX.out.logs
