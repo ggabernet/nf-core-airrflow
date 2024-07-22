@@ -10,6 +10,7 @@ include { FASTP                                          } from '../../modules/n
 include { PRESTO_FILTERSEQ      as  PRESTO_FILTERSEQ_UMI     }    from '../../modules/local/presto/presto_filterseq'
 include { PRESTO_MASKPRIMERS    as  PRESTO_MASKPRIMERS_UMI   }    from '../../modules/local/presto/presto_maskprimers'
 include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_PRIMERS   }    from '../../modules/local/presto/presto_maskprimers_align'
+include { PRESTO_MASKPRIEMRS_ALIGN as PRESTO_ALIGN_PRECUT    }    from '../../modules/local/presto/presto_maskprimers_align'
 include { PRESTO_MASKPRIMERS_EXTRACT                         }    from '../../modules/local/presto/presto_maskprimers_extract'
 include { PRESTO_MASKPRIMERS_ALIGN as PRESTO_ALIGN_CREGION   }    from '../../modules/local/presto/presto_maskprimers_align'
 include { PRESTO_PAIRSEQ        as  PRESTO_PAIRSEQ_UMI       }    from '../../modules/local/presto/presto_pairseq'
@@ -108,15 +109,34 @@ workflow PRESTO_UMI {
                                             .map{ reads -> [reads[0], reads[1]] }.dump(tag: 'ch_reads_R1')
         ch_reads_R2 = PRESTO_FILTERSEQ_UMI.out.reads
                                             .map{ reads -> [reads[0], reads[2]] }.dump(tag: 'ch_reads_R2')
+
+            // Sequence precut
+        if (params.sequence_precut){
+            ch_seq_precut = Channel.fromPath(params.cprimers, checkIfExists: true)
+
+            PRESTO_ALIGN_PRECUT(
+                ch_reads_R1,
+                ch_seq_precut,
+                params.primer_maxlen,
+                params.primer_r1_maxerror,
+                'cut'
+            )
+            ch_versions = ch_versions.mix(PRESTO_ALIGN_PRECUT.out.versions)
+
+        } else {
+            ch_reads_R1_postprecut = ch_reads_R1
+            ch_reads_R2_postprecut = ch_reads_R2
+        }
+
         PRESTO_ALIGN_PRIMERS(
-            ch_reads_R1,
+            ch_reads_R1_postprecut,
             ch_cprimers.collect(),
             params.primer_maxlen,
             params.primer_r1_maxerror,
             params.primer_mask_mode
         )
         PRESTO_MASKPRIMERS_EXTRACT(
-            ch_reads_R2
+            ch_reads_R2_postprecut
         )
 
         ch_versions = ch_versions.mix(PRESTO_ALIGN_PRIMERS.out.versions)
