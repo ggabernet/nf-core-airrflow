@@ -7,7 +7,7 @@ process PRESTO_MASKPRIMERS_ALIGN {
     //container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
     //    'https://depot.galaxyproject.org/singularity/presto:0.7.1--pyhdfd78af_0' :
     // 'biocontainers/presto:0.7.1--pyhdfd78af_0' }"
-    container ggabernet/presto:dev
+    container "ggabernet/presto:dev"
 
     input:
     tuple val(meta), path(reads)
