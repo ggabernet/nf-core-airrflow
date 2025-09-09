@@ -23,7 +23,8 @@ for rec in SeqIO.parse(in_file, "fasta"):
     name = rec.description
     if name.startswith(locus+segment):
         seq = SeqRecord(rec.seq.upper(), id=name, name=name, description=name)
-        seq_list.append(seq)
+        if name not in ["IGKV0-MAQO*00"]: # Exclude known bad sequence
+            seq_list.append(seq)
 
 # Overwrite file
 with open(out_file, "w") as out_handle:
